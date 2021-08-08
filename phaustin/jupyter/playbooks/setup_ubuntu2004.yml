@@ -1,0 +1,116 @@
+#################################################
+# DO Community Playbooks: Initial Server Setup
+# https://github.com/do-community/ansible-playbooks.git
+#################################################
+---
+- hosts: all
+  become: true
+  vars_files:
+    - vars/default.yml
+
+  tasks:
+    - name: Install Prerequisites
+      apt: name=aptitude update_cache=yes state=latest force_apt_get=yes
+      tags:
+        - addpackages
+
+
+# Sudo Group Setup
+    - name: Make sure we have  'wheel'  and 'docker' groups
+      group:
+        name: "{{ item.name }}"
+        state: present
+      with_items:
+        - { name: 'docker'}
+        - { name: 'wheel' }
+        - { name: 'sudo' }
+      tags:
+        - addgroup
+
+    - name: Allow 'wheel' group to have passwordless sudo
+      lineinfile:
+        path: /etc/sudoers
+        state: present
+        regexp: '^%wheel'
+        line: '%wheel ALL=(ALL) NOPASSWD: ALL'
+        validate: '/usr/sbin/visudo -cf %s'
+      tags:
+        - addgroup
+
+# User + Key Setup
+    - name: Create a new regular user with sudo privileges
+      user:
+        name: "{{ create_user }}"
+        state: present
+        groups: wheel,docker
+        append: true
+        create_home: true
+        shell: /bin/bash
+      tags:
+        - adduser
+
+    - name: Set authorized key for remote user
+      authorized_key:
+        user: "{{ create_user }}"
+        state: present
+        key: "{{ copy_local_key }}"
+        exclusive: true
+      tags:
+        - adduser
+
+    - name: Disable password authentication for root
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        state: present
+        regexp: '^#?PermitRootLogin'
+        line: 'PermitRootLogin prohibit-password'
+      tags:
+        - adduser
+
+# Install Packages
+    - name: Update apt
+      apt: update_cache=yes
+
+    - name: Install required system packages
+      apt: name={{ sys_packages }} state=latest
+      tags:
+        - addpackages
+
+#https://github.com/christurnerio/digital-ocean-ansible/blob/master/tasks/ufw.yml
+# UFW Setup
+# to verify ufw configuration run:
+# sudo ufw status verbose
+    - name: Install ufw
+      apt: package=ufw state=present
+
+    - name: Configure ufw defaults
+      ufw: direction={{ item.direction }} policy={{ item.policy }}
+      with_items:
+        - { direction: 'incoming', policy: 'deny' }
+        - { direction: 'outgoing', policy: 'allow' }
+      notify:
+        - Restart ufw
+      tags:
+        - firewall
+
+    - name: Configure ufw rules
+      ufw: rule={{ item.rule }} port={{ item.port }} proto={{ item.proto }}
+      with_items:
+        - { rule: 'limit', port: '{{ ssh_port | default("22") }}', proto: 'tcp' }
+        - { rule: 'allow', port: '80', proto: 'tcp' }
+        - { rule: 'allow', port: '443', proto: 'tcp' }
+      notify:
+        - Restart ufw
+      tags:
+        - firewall
+
+    - name: Enable ufw logging
+      ufw: logging=on
+      tags:
+        - firewall
+
+    - name: Enable ufw
+      ufw: state=enabled
+      tags:
+        - firewall
+

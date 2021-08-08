@@ -1,0 +1,31 @@
+all:
+  children:
+    local:
+      hosts:
+        127.0.0.1:
+      vars:
+        ansible_connection: local
+    do:
+      hosts:
+        do1:
+        do1jov:
+        n1jov:
+    nxroot:
+      hosts:
+        n1:
+        n3:
+        n4:
+        n5:
+    nxjov:
+      hosts:
+        n1jov:
+        n3jov:
+        n4jov:
+        n5jov:
+    jx:
+      hosts:
+        j1:
+        j1jov:
+        j2:
+        j2jov:
+

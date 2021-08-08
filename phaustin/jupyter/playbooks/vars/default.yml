@@ -1,0 +1,4 @@
+---
+create_user: jovyan
+copy_local_key: "{{ lookup('file', lookup('env','HOME') + '/.ssh/tlef_key1.pub') }}"
+sys_packages: [ 'curl', 'vim', 'git', 'ufw', 'apache2-utils']
