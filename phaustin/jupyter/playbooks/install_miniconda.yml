@@ -1,0 +1,40 @@
+- hosts: all
+  become: true
+
+  tasks:
+    - name: Download Miniconda
+      get_url:
+        url: https://github.com/conda-forge/miniforge/releases/download/4.10.3-4/Mambaforge-4.10.3-4-Linux-x86_64.sh
+        dest: /tmp/install-miniconda.sh
+        checksum: sha256:5017562c434185b4d9d311274c14717077f6c09a238a4d34a1caf7618d26ddd4.
+        mode: 0550
+    - name: Create conda folder
+      become: True
+      file:
+        path: /opt/miniconda3
+        state: directory
+        owner: jovyan
+        mode: 755
+        recurse: yes
+    - name: Run the installer
+      shell: /tmp/install-miniconda.sh -b -u -p /opt/miniconda3
+    - name: Remove the installer
+      file:
+        state: absent
+        path: /tmp/install-miniconda.sh
+    - name: Add miniconda bin to path
+      become: True
+      shell: echo 'export PATH=/opt/miniconda3/bin:$PATH' >> /etc/profile
+    - name: conda - read permission for all
+      become: True
+      file:
+        path: /opt/miniconda3
+        mode: +r
+        recurse: yes
+    - name: conda - execution permission for all
+      become: True
+      file:
+        path: /opt/miniconda3/bin
+        mode: +x
+        recurse: yes
+        
