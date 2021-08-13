@@ -29,6 +29,7 @@
       become: True
       file:
         path: /opt/miniconda3
+        owner: jovyan
         mode: +r
         recurse: yes
     - name: conda - execution permission for all
